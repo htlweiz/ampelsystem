@@ -32,6 +32,9 @@
     void setup() {
     Serial.begin(115200);
 
+    pinMode(15, OUTPUT);
+    pinMode(23, INPUT);
+
     // Create the BLE Device
     BLEDevice::init(bleServerName);
 
