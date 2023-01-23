@@ -99,8 +99,11 @@
     return false;
   }
 
+  /*State machine*/
   void controlLights() {
+    // wait 2s
     if (state == 0 && timeHasPassed(2000)) state++;
+    // blink vehicle green light 4 times than orange
     if (state == 1) {
       for (uint8_t i = 0; i < 4; i++)
       {
@@ -112,36 +115,39 @@
       digitalWrite(VEHICLE_ORANGE, HIGH);
       state++;
     }
+    // switch traffic light to red
     if (state == 2 && timeHasPassed(2000))
     {
       digitalWrite(VEHICLE_ORANGE, LOW);
       digitalWrite(VEHICLE_RED, HIGH);
       state++;
     }
+    // switch pedestian light to green
     if (state == 3 && timeHasPassed(2000)) {
       digitalWrite(PEDESTRIAN_RED, LOW);
       digitalWrite(PEDESTRIAN_GREEN, HIGH);
       state++;
     }
+    // switch pedestrian light to red
     if (state == 4 && timeHasPassed(10000)) {
       digitalWrite(PEDESTRIAN_GREEN, LOW);
       digitalWrite(PEDESTRIAN_RED, HIGH);
       state++;
     }
+    // switch traffic light to orange
     if (state == 5 && timeHasPassed(2000)) {
       digitalWrite(VEHICLE_RED, LOW);
-      state++;
-    }
-    if (state == 6 && timeHasPassed(2000)){
       digitalWrite(VEHICLE_ORANGE, HIGH);
       state++;
     }
-    if (state == 7 && timeHasPassed(2000)){
+    // switch traffic light to green
+    if (state == 6 && timeHasPassed(2000)){
       digitalWrite(VEHICLE_ORANGE, LOW);
       digitalWrite(VEHICLE_GREEN, HIGH);
       state++;
     }
-    if (state == 8 && timeHasPassed(10000)){
+    // reset state
+    if (state == 7 && timeHasPassed(10000)){
       lightSequence = false;
       state = 0;
     }
@@ -185,6 +191,7 @@
         Serial.println("connected");
       }
     } else if (dataNotify == true) {
+      // initiate light sequence on notify
       lightSequence = true;
       dataNotify = false;
     }
@@ -192,6 +199,7 @@
       controlLights();
     } else
     {
+      // used to calculate the time between the last state change
       millisSinceChange = millis();
     }
     
