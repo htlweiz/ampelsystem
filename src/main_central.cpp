@@ -9,6 +9,13 @@
   //BLE Server name
   #define bleServerName "4AHIT_TEMP"
 
+  //Output pins
+  #define PEDESTRIAN_GREEN 23
+  #define PEDESTRIAN_RED 22
+  #define VEHICLE_GREEN 18
+  #define VEHICLE_ORANGE 19
+  #define VEHICLE_RED 21
+
   /* UUID's of the service, characteristic*/
   // BLE Service
   static BLEUUID bleServiceUUID("01f4710c-90d0-11ed-a1eb-0242ac120002");
@@ -20,6 +27,11 @@
   static boolean doConnect = false;
   static boolean connected = false;
   static boolean dataNotify = false;
+
+  static uint8_t state = 0;
+  static boolean lightSequence = false;
+
+  static uint64_t millisSinceChange = 0;
 
   //Address of the peripheral device.
   static BLEAddress *pServerAddress;
@@ -70,7 +82,6 @@
   //Callback function that gets called, when advertisement has been received
   class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
-      // Serial.println(advertisedDevice.getName().c_str());
       if (advertisedDevice.getName() == bleServerName) { //Check if the name of the advertiser matches
         advertisedDevice.getScan()->stop(); //Scan can be stopped
         pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser
@@ -80,11 +91,72 @@
     }
   };
   
+  boolean timeHasPassed(uint64_t deltaTime_ms) {
+    if (millis() - millisSinceChange >= deltaTime_ms) {
+      millisSinceChange = millis();
+      return true;
+    }
+    return false;
+  }
+
+  void controlLights() {
+    if (state == 0 && timeHasPassed(2000)) state++;
+    if (state == 1) {
+      for (uint8_t i = 0; i < 4; i++)
+      {
+        digitalWrite(VEHICLE_GREEN, HIGH);
+        delay(1000);
+        digitalWrite(VEHICLE_GREEN, LOW);
+        delay(1000);
+      }
+      digitalWrite(VEHICLE_ORANGE, HIGH);
+      state++;
+    }
+    if (state == 2 && timeHasPassed(2000))
+    {
+      digitalWrite(VEHICLE_ORANGE, LOW);
+      digitalWrite(VEHICLE_RED, HIGH);
+      state++;
+    }
+    if (state == 3 && timeHasPassed(2000)) {
+      digitalWrite(PEDESTRIAN_RED, LOW);
+      digitalWrite(PEDESTRIAN_GREEN, HIGH);
+      state++;
+    }
+    if (state == 4 && timeHasPassed(10000)) {
+      digitalWrite(PEDESTRIAN_GREEN, LOW);
+      digitalWrite(PEDESTRIAN_RED, HIGH);
+      state++;
+    }
+    if (state == 5 && timeHasPassed(2000)) {
+      digitalWrite(VEHICLE_RED, LOW);
+      state++;
+    }
+    if (state == 6 && timeHasPassed(2000)){
+      digitalWrite(VEHICLE_ORANGE, HIGH);
+      state++;
+    }
+    if (state == 7 && timeHasPassed(2000)){
+      digitalWrite(VEHICLE_ORANGE, LOW);
+      digitalWrite(VEHICLE_GREEN, HIGH);
+      state++;
+    }
+    if (state == 8 && timeHasPassed(10000)){
+      lightSequence = false;
+      state = 0;
+    }
+  }
 
   void setup() {
     //Start serial communication
     Serial.begin(115200);
     Serial.println("Starting BLE Client ...");
+
+    pinMode(PEDESTRIAN_GREEN, OUTPUT);
+    pinMode(PEDESTRIAN_RED, OUTPUT);
+    pinMode(VEHICLE_GREEN, OUTPUT);
+    pinMode(VEHICLE_ORANGE, OUTPUT);
+    pinMode(VEHICLE_RED, OUTPUT);
 
     //Init BLE device
     BLEDevice::init("");
@@ -97,11 +169,14 @@
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
     pBLEScan->setActiveScan(true);
     pBLEScan->start(30);
+
+    digitalWrite(PEDESTRIAN_RED, HIGH);
+
+    // lightSequence = true;
   }
 
   void loop() {
     // TODO
-    Serial.println("loop");
     if (doConnect == true) {
       if (connectToServer(*pServerAddress)) {
         temperatureCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
@@ -110,12 +185,16 @@
         Serial.println("connected");
       }
     } else if (dataNotify == true) {
-      for (size_t i = 0; i < dataLength; i++)
-      {
-        Serial.println(*(pSensorData+i));
-      }
+      lightSequence = true;
       dataNotify = false;
     }
+    if (lightSequence == true) {
+      controlLights();
+    } else
+    {
+      millisSinceChange = millis();
+    }
+    
     delay(1000); // Delay a second between loops.
   }
 
