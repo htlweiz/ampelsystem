@@ -15,17 +15,12 @@
 #define SERVICE_UUID "01f4710c-90d0-11ed-a1eb-0242ac120002"
 #define CHARACTERISTICS_UUID "d7b554a8-2904-4ee8-9aa0-5c07e9ad1ca2"
 
-#define redLight 18
-#define greenLight 19
-
-#define rightButton 26
-#define leftButton 27 
+#define Button 23
+#define output 15
 
 int loopcounter = 0;
 bool connected = false;
-int signal = 0;
-
-
+int PressedSignal = 0;
 
 // Temperature Characteristic and Descriptor
 BLECharacteristic bleTemperatureCelsiusCharacteristics("d7b554a8-2904-4ee8-9aa0-5c07e9ad1ca2", BLECharacteristic::PROPERTY_NOTIFY);
@@ -47,9 +42,6 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 void setup() {
     Serial.begin(115200);
-
-    pinMode(15, OUTPUT);
-    pinMode(23, INPUT);
 
     // Create the BLE Device
     BLEDevice::init(bleServerName);
@@ -82,33 +74,29 @@ void setup() {
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pServer->getAdvertising()->start();
 
-    Serial.println("Waiting a client connection to notify..."); 
+    //Serial.println("Waiting a client connection to notify..."); 
 
-    // Set pinMode of rightButton, letfButton, redLight and greenLight
-    pinMode(redLight, HIGH);
-    pinMode(greenLight, LOW);
-
-    pinMode(rightButton, LOW);
-    pinMode(leftButton, LOW);
+    //Setting the pins
+    //output is set to HIGH and when the button is pressed
+    //Button will be also high
+    pinMode(Button, INPUT);
+    pinMode(output, OUTPUT);
+    digitalWrite(output, HIGH);
 }
 
 void loop() {
-    //TODO
-    //every 10 seconds write a new value into bleTemperatureCelsiusCharacteristics
-    //then tell with notify that somethings has changed
-    Serial.println("looop");
-
-    if (rightButton == HIGH or leftButton == HIGH)
+    //Reading the state of the button
+    int btn1 = digitalRead(Button);
+	
+    if (btn1 == HIGH)
     {
-        signal = 1;
-        bleTemperatureCelsiusCharacteristics.setValue(signal);
+	    //If Button is pressed Central is notified
+        PressedSignal = 1;
+        bleTemperatureCelsiusCharacteristics.setValue(PressedSignal);
         bleTemperatureCelsiusCharacteristics.notify();
-        sleep(5);
 
-    }
-    
-    sleep(10); 
-    loopcounter++;
+	    //With sleep() the program freezes for the next 10 seconds
+        sleep(10);
+    }      
 }
-
 #endif
